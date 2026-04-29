@@ -81,7 +81,7 @@ The `|` marker indicates your auto-compact threshold (`CLAUDE_AUTOCOMPACT_PCT_OV
 
 ```
 ████░░|░░░░  60% used, below autocompact threshold
-████████|██  80% used, past autocompact → will auto-compact at end of turn
+████████|█░  80% used, past autocompact → will auto-compact at end of turn
 ```
 
 `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` defaults to 95%, and can be customised in your `~/.claude/settings.json`:
