@@ -91,7 +91,10 @@ process.stdin.on('end', () => {
     }
   } catch {}
 
+  const caveman = home ? fs.existsSync(path.join(home, '.caveman-flag')) : false;
+
   const parts = [];
+  if (caveman) parts.push('🗿');
   const modelDisplay = advisorModel
     ? c(36, model) + c(90, ` ▸ ${advisorModel}`)
     : c(36, model);
