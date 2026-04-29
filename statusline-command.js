@@ -7,10 +7,22 @@ const { execSync } = require('child_process');
 const c = (code, s) => `\x1b[${code}m${s}\x1b[0m`;
 const sep = c(90, '|');
 
+const COMPACT_COMMAND_MD = `---
+description: Toggle compact mode for the status line
+allowed-tools: Bash
+---
+
+!\`f="$HOME/.claude/.statusline-mode"; cur=$(cat "$f" 2>/dev/null); if [ "$cur" = "compact" ]; then echo "full" > "$f"; echo "compact mode: OFF (forced full)"; else echo "compact" > "$f"; echo "compact mode: ON (forced compact)"; fi\`
+
+Report the new compact mode state to the user in one short sentence.
+`;
+
 function runInstall() {
   const home = process.env.HOME || process.env.USERPROFILE || '';
   const claudeDir = process.env.CLAUDE_CONFIG_DIR || path.join(home, '.claude');
   const settingsPath = path.join(claudeDir, 'settings.json');
+  const commandsDir = path.join(claudeDir, 'commands');
+  const compactCmdPath = path.join(commandsDir, 'status-line-compact.md');
   const cmd = 'npx -y simple-claude-code-status-line';
 
   try {
@@ -31,6 +43,11 @@ function runInstall() {
     if (prev && (prev.command !== cmd || prev.type !== 'command')) {
       console.log(c(90, `  (replaced previous: ${JSON.stringify(prev)})`));
     }
+
+    if (!fs.existsSync(commandsDir)) fs.mkdirSync(commandsDir, { recursive: true });
+    fs.writeFileSync(compactCmdPath, COMPACT_COMMAND_MD);
+    console.log(c(32, '✓') + ` Installed /status-line-compact slash command into ${compactCmdPath}`);
+
     console.log(c(90, '  Restart Claude Code to see it.'));
     process.exit(0);
   } catch (e) {
