@@ -7,6 +7,39 @@ const { execSync } = require('child_process');
 const c = (code, s) => `\x1b[${code}m${s}\x1b[0m`;
 const sep = c(90, '|');
 
+// Setup mode: when run interactively (no piped JSON), install into ~/.claude/settings.json
+if (process.stdin.isTTY || process.argv.includes('install') || process.argv.includes('--install')) {
+  const home = process.env.HOME || process.env.USERPROFILE || '';
+  const claudeDir = process.env.CLAUDE_CONFIG_DIR || path.join(home, '.claude');
+  const settingsPath = path.join(claudeDir, 'settings.json');
+  const cmd = 'npx -y simple-claude-code-status-line';
+
+  try {
+    if (!fs.existsSync(claudeDir)) fs.mkdirSync(claudeDir, { recursive: true });
+    let settings = {};
+    if (fs.existsSync(settingsPath)) {
+      try { settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8')); } catch {
+        const backup = settingsPath + '.bak.' + Date.now();
+        fs.copyFileSync(settingsPath, backup);
+        console.error(c(33, `Existing settings.json was invalid JSON. Backed up to ${backup}`));
+        settings = {};
+      }
+    }
+    const prev = settings.statusLine;
+    settings.statusLine = { type: 'command', command: cmd };
+    fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+    console.log(c(32, '✓') + ` Installed status line into ${settingsPath}`);
+    if (prev && (prev.command !== cmd || prev.type !== 'command')) {
+      console.log(c(90, `  (replaced previous: ${JSON.stringify(prev)})`));
+    }
+    console.log(c(90, '  Restart Claude Code to see it.'));
+    process.exit(0);
+  } catch (e) {
+    console.error(c(31, '✗') + ` Failed: ${e.message}`);
+    process.exit(1);
+  }
+}
+
 let raw = '';
 process.stdin.on('data', d => raw += d);
 process.stdin.on('end', () => {

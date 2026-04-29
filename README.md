@@ -31,18 +31,13 @@ A rich status line for [Claude Code](https://claude.ai/code) showing cache metri
 
 ### Option A — npm (recommended)
 
-Add to `~/.claude/settings.json`:
-
-```json
-{
-  "statusLine": {
-    "type": "command",
-    "command": "npx -y simple-claude-code-status-line"
-  }
-}
+```
+npx -y simple-claude-code-status-line
 ```
 
-That's it. `npx` fetches and caches the package on first run.
+That's it. The command writes the `statusLine` entry into `~/.claude/settings.json` for you. Restart Claude Code to see it.
+
+> Run again any time to repair/reset the entry. Existing settings are preserved.
 
 ### Option B — Claude Code plugin
 
