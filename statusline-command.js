@@ -39,14 +39,14 @@ process.stdin.on('end', () => {
       const preEmpty = divBlock - preFilled;
       const postEmpty = (BLOCKS - divBlock) - postFilled;
       ctx_display =
-        (preFilled ? c(32, '█'.repeat(preFilled)) : '') +
+        (preFilled ? c(37, '█'.repeat(preFilled)) : '') +
         (preEmpty  ? '░'.repeat(preEmpty)          : '') +
         c(90, '|') +
         (postFilled ? c(31, '█'.repeat(postFilled)) : '') +
         (postEmpty  ? '░'.repeat(postEmpty)         : '') +
         ` ${Math.round(pct)}%`;
     } else {
-      const color = pct < 50 ? 32 : pct < 75 ? 33 : 31;
+      const color = pct < 50 ? 37 : pct < 75 ? 33 : 31;
       ctx_display = c(color, '█'.repeat(filled) + '░'.repeat(BLOCKS - filled) + ` ${Math.round(pct)}%`);
     }
   }
