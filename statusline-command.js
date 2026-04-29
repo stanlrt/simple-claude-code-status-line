@@ -16,6 +16,19 @@ process.stdin.on('end', () => {
   const model = json.model?.display_name || json.model?.id || 'Unknown';
   const home = process.env.HOME || process.env.USERPROFILE || '';
 
+  let cols = 0;
+  const tries = [
+    () => parseInt(execSync('tput cols </dev/tty', { encoding: 'utf8', shell: '/bin/bash', stdio: ['ignore', 'pipe', 'ignore'] }).trim(), 10),
+    () => parseInt(execSync('stty size </dev/tty', { encoding: 'utf8', shell: '/bin/bash', stdio: ['ignore', 'pipe', 'ignore'] }).split(' ')[1], 10),
+    () => { const m = execSync('mode con', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).match(/Columns:\s+(\d+)/i); return m ? parseInt(m[1], 10) : 0; },
+    () => parseInt(execSync('powershell -NoProfile -Command "$Host.UI.RawUI.WindowSize.Width"', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(), 10),
+    () => parseInt(process.env.COLUMNS, 10),
+  ];
+  for (const fn of tries) {
+    try { const v = fn(); if (v && v > 0) { cols = v; break; } } catch {}
+  }
+  if (!cols) cols = 999;
+
   let advisorModel = '';
   try {
     const settingsPath = path.join(home, '.claude', 'settings.json');
@@ -119,17 +132,66 @@ process.stdin.on('end', () => {
     else if (mode === 'ultra' || mode === 'wenyan-ultra') cavemanHeads = 3;
   } catch {}
 
+  const threshRaw = process.env.COMPACT_STATUS_LINE_THRESHOLD;
+  const thresh = threshRaw !== undefined ? parseInt(threshRaw, 10) : 140;
+  const compact = thresh === 0 ? true : cols < thresh;
+
   const parts = [];
   if (cavemanHeads > 0) parts.push('🗿'.repeat(cavemanHeads));
-  const modelDisplay = advisorModel
-    ? c(36, model) + c(90, ` ▸ ${advisorModel}`)
-    : c(36, model);
-  parts.push(modelDisplay);
-  parts.push(ctx_display);
-  parts.push(cacheDisplay);
-  if (gitPart) parts.push(gitPart);
-  parts.push(c(35, `$${cost.toFixed(4)}`));
-  parts.push(c(32, cwd));
+
+  if (compact) {
+    const abbrev = (name) => {
+      const lower = name.toLowerCase();
+      let prefix = '';
+      if (lower.includes('opus')) prefix = 'O';
+      else if (lower.includes('sonnet')) prefix = 'S';
+      else if (lower.includes('haiku')) prefix = 'H';
+      else return name.split(' ')[0];
+      const v = name.match(/(\d+\.\d+)/);
+      const ext = /1m/i.test(name) ? '+' : '';
+      return `${prefix}${v ? v[1] : ''}${ext}`;
+    };
+    const modelShort = abbrev(model);
+    const advShort = advisorModel ? advisorModel.charAt(0).toLowerCase() : '';
+    parts.push(advShort
+      ? c(36, modelShort) + c(90, ` ▸ ${advShort}`)
+      : c(36, modelShort));
+
+    let ctxShort;
+    if (pct == null) {
+      ctxShort = c(90, '--%');
+    } else {
+      const showThresh = autocompactPct < 95;
+      const color = (showThresh && pct >= autocompactPct) ? 31
+                  : pct < 50 ? 37 : pct < 75 ? 33 : 31;
+      ctxShort = c(color, `${Math.round(pct)}%`) + (showThresh ? c(90, ` (${autocompactPct})`) : '');
+    }
+    parts.push(ctxShort);
+
+    if (bust) {
+      parts.push(c(31, 'BUST'));
+    } else if (hitPct !== null) {
+      const hitColor = hitPct === 0 ? 31 : hitPct < 50 ? 33 : 32;
+      parts.push(c(hitColor, `h${hitPct}%`));
+    }
+
+    if (gitPart) {
+      const branchOnly = gitPart.split(' ').slice(0, 2).join(' ');
+      parts.push(branchOnly);
+    }
+    parts.push(c(35, `$${cost.toFixed(1)}`));
+    parts.push(c(32, cwd));
+  } else {
+    const modelDisplay = advisorModel
+      ? c(36, model) + c(90, ` ▸ ${advisorModel}`)
+      : c(36, model);
+    parts.push(modelDisplay);
+    parts.push(ctx_display);
+    parts.push(cacheDisplay);
+    if (gitPart) parts.push(gitPart);
+    parts.push(c(35, `$${cost.toFixed(4)}`));
+    parts.push(c(32, cwd));
+  }
 
   process.stdout.write(parts.join(` ${sep} `) + '\n');
 });

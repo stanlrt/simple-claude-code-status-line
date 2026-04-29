@@ -94,6 +94,25 @@ The `|` marker indicates your auto-compact threshold (`CLAUDE_AUTOCOMPACT_PCT_OV
 }
 ```
 
+### Compact mode
+
+For narrow windows the status line auto-switches to a compact layout:
+
+```
+🗿🗿 | O4.7+ ▸ o | 12% (80) | h100% | ⎇ main | $0.3 | ~\path\to\dir
+```
+
+- Model: first letter (`O`/`S`/`H`) + version, `+` for 1M context
+- Advisor: first letter, lowercase
+- Context: `pct%` and `(threshold)` only when `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` is set
+- Cache: `h100%` or `BUST`, no fresh/write
+- Git: branch only, no file counts
+- Cost: 1 decimal
+
+Switch threshold via `COMPACT_STATUS_LINE_THRESHOLD` env var (default `140`). Set to `0` to force compact mode always.
+
+> Detection of terminal width works on real TTYs (Mac/Linux CLI). The Claude Code desktop app on any OS does not expose its rendered window width — set `COMPACT_STATUS_LINE_THRESHOLD=0` if you want compact mode there.
+
 ### Cache metrics
 
 Claude Code caches your context (system prompt, conversation history) server-side. Each turn the API reports:
