@@ -7,8 +7,7 @@ const { execSync } = require('child_process');
 const c = (code, s) => `\x1b[${code}m${s}\x1b[0m`;
 const sep = c(90, '|');
 
-// Setup mode: when run interactively (no piped JSON), install into ~/.claude/settings.json
-if (process.stdin.isTTY || process.argv.includes('install') || process.argv.includes('--install')) {
+function runInstall() {
   const home = process.env.HOME || process.env.USERPROFILE || '';
   const claudeDir = process.env.CLAUDE_CONFIG_DIR || path.join(home, '.claude');
   const settingsPath = path.join(claudeDir, 'settings.json');
@@ -40,9 +39,20 @@ if (process.stdin.isTTY || process.argv.includes('install') || process.argv.incl
   }
 }
 
+// Explicit install args
+if (process.argv.includes('install') || process.argv.includes('--install')) {
+  runInstall();
+}
+
+// Auto-detect: no piped JSON => install mode. Claude Code always pipes JSON for the status line.
 let raw = '';
 process.stdin.on('data', d => raw += d);
 process.stdin.on('end', () => {
+  // Empty stdin = user invoked directly (npx <pkg>), not by Claude Code
+  if (!raw.trim()) {
+    runInstall();
+    return;
+  }
   let json = {};
   try { json = JSON.parse(raw); } catch {}
 
