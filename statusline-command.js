@@ -10,36 +10,46 @@ const fsp = fs.promises;
 const c = (code, s) => `\x1b[${code}m${s}\x1b[0m`;
 const sep = c(90, '|');
 
-const VERSION = '1.9.0';
+const VERSION = '1.9.1';
 const RAW_URL = 'https://raw.githubusercontent.com/stanlrt/simple-claude-code-status-line/main/statusline-command.js';
 const AUTO_UPDATE_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const HOOK_TAG = 'simple-claude-code-status-line:auto-update';
 
 function runAutoUpdate() {
-  // Detach into a background process so SessionStart hook returns instantly
-  if (!process.env.SIMPLE_STATUSLINE_DETACHED) {
-    const { spawn } = require('child_process');
-    const child = spawn(process.execPath, [__filename, 'auto-update'], {
-      detached: true,
-      stdio: 'ignore',
-      env: { ...process.env, SIMPLE_STATUSLINE_DETACHED: '1' },
-    });
-    child.unref();
-    process.exit(0);
-  }
+  const home = process.env.HOME || process.env.USERPROFILE || '';
+  const claudeDir = process.env.CLAUDE_CONFIG_DIR || path.join(home, '.claude');
+  const stamp = path.join(claudeDir, '.statusline-last-update-check');
 
-  // Detached child: throttle, then run update
+  // Fast-path throttle: 99% of session starts hit this and exit immediately.
+  // Done BEFORE spawning anything, so the hook returns in tens of milliseconds.
   try {
-    const home = process.env.HOME || process.env.USERPROFILE || '';
-    const claudeDir = process.env.CLAUDE_CONFIG_DIR || path.join(home, '.claude');
-    const stamp = path.join(claudeDir, '.statusline-last-update-check');
     if (fs.existsSync(stamp)) {
       const age = Date.now() - fs.statSync(stamp).mtimeMs;
-      if (age < AUTO_UPDATE_INTERVAL_MS) process.exit(0);
+      if (age < AUTO_UPDATE_INTERVAL_MS) {
+        process.exit(0);
+      }
     }
-    fs.writeFileSync(stamp, String(Date.now()));
   } catch {}
-  runUpdate();
+
+  // Stale: bump timestamp now so concurrent starts don't all queue updates.
+  try { fs.writeFileSync(stamp, String(Date.now())); } catch {}
+
+  if (process.env.SIMPLE_STATUSLINE_DETACHED) {
+    // Detached child: actually fetch + write
+    runUpdate();
+    return;
+  }
+
+  // Spawn the detached child. windowsHide prevents a console window flash on Windows.
+  const { spawn } = require('child_process');
+  const child = spawn(process.execPath, [__filename, 'auto-update'], {
+    detached: true,
+    stdio: 'ignore',
+    windowsHide: true,
+    env: { ...process.env, SIMPLE_STATUSLINE_DETACHED: '1' },
+  });
+  child.unref();
+  process.exit(0);
 }
 
 function runUpdate() {
