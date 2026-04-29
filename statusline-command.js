@@ -39,16 +39,33 @@ function runInstall() {
   }
 }
 
-// Explicit install args
-if (process.argv.includes('install') || process.argv.includes('--install')) {
+// Explicit subcommands / flags
+if (process.argv.includes('init') || process.argv.includes('install') || process.argv.includes('--install')) {
   runInstall();
 }
 
-// Auto-detect: no piped JSON => install mode. Claude Code always pipes JSON for the status line.
+// Detection: Claude Code pipes JSON within milliseconds. If no data arrives in 150ms,
+// assume direct user invocation (npx <pkg>) and run install. isTTY alone is unreliable
+// across Windows shells / npm wrappers, so we trust the data signal instead.
 let raw = '';
-process.stdin.on('data', d => raw += d);
+let gotData = false;
+let decided = false;
+
+const timer = setTimeout(() => {
+  if (!gotData && !decided) {
+    decided = true;
+    runInstall();
+  }
+}, 150);
+
+process.stdin.on('data', d => {
+  gotData = true;
+  raw += d;
+});
 process.stdin.on('end', () => {
-  // Empty stdin = user invoked directly (npx <pkg>), not by Claude Code
+  if (decided) return;
+  decided = true;
+  clearTimeout(timer);
   if (!raw.trim()) {
     runInstall();
     return;

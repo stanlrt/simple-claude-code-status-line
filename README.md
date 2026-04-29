@@ -38,6 +38,8 @@ npx -y simple-claude-code-status-line
 That's it. The command writes the `statusLine` entry into `~/.claude/settings.json` for you. Restart Claude Code to see it.
 
 > Run again any time to repair/reset the entry. Existing settings are preserved.
+>
+> If detection fails on your shell, force install mode explicitly: `npx -y simple-claude-code-status-line init`
 
 ### Option B — Claude Code plugin
 
