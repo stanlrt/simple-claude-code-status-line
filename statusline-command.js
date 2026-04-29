@@ -2,12 +2,15 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { execSync } = require('child_process');
+const { exec } = require('child_process');
+const util = require('util');
+const execP = util.promisify(exec);
+const fsp = fs.promises;
 
 const c = (code, s) => `\x1b[${code}m${s}\x1b[0m`;
 const sep = c(90, '|');
 
-const VERSION = '1.8.0';
+const VERSION = '1.9.0';
 const RAW_URL = 'https://raw.githubusercontent.com/stanlrt/simple-claude-code-status-line/main/statusline-command.js';
 const AUTO_UPDATE_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const HOOK_TAG = 'simple-claude-code-status-line:auto-update';
@@ -197,7 +200,7 @@ process.stdin.on('data', d => {
   gotData = true;
   raw += d;
 });
-process.stdin.on('end', () => {
+process.stdin.on('end', async () => {
   if (decided) return;
   decided = true;
   clearTimeout(timer);
@@ -210,26 +213,70 @@ process.stdin.on('end', () => {
 
   const model = json.model?.display_name || json.model?.id || 'Unknown';
   const home = process.env.HOME || process.env.USERPROFILE || '';
+  const claudeDir = process.env.CLAUDE_CONFIG_DIR || path.join(home, '.claude');
+  const workDir = json.workspace?.current_dir || process.cwd();
+  const sessionId = json.session_id || 'default';
+  const cacheFile = path.join(os.tmpdir(), `claude-statusline-git-${sessionId}`);
+  const CACHE_TTL = 5000;
+
+  // Parallel probes
+  const widthProbes = [
+    execP('tput cols </dev/tty', { shell: '/bin/bash' }).then(r => parseInt(r.stdout.trim(), 10)),
+    execP('stty size </dev/tty', { shell: '/bin/bash' }).then(r => parseInt(r.stdout.trim().split(' ')[1], 10)),
+    execP('mode con').then(r => { const m = r.stdout.match(/Columns:\s+(\d+)/i); return m ? parseInt(m[1], 10) : 0; }),
+    execP('powershell -NoProfile -Command "$Host.UI.RawUI.WindowSize.Width"').then(r => parseInt(r.stdout.trim(), 10)),
+    Promise.resolve(parseInt(process.env.COLUMNS, 10) || 0),
+  ].map(p => p.catch(() => 0));
+
+  const advisorPromise = fsp.readFile(path.join(home, '.claude', 'settings.json'), 'utf8')
+    .then(s => { try { return JSON.parse(s).advisorModel || ''; } catch { return ''; } })
+    .catch(() => '');
+
+  const cavemanPromise = fsp.readFile(path.join(claudeDir, '.caveman-active'), 'utf8')
+    .then(t => t.trim()).catch(() => '');
+
+  const forcedModePromise = fsp.readFile(path.join(claudeDir, '.statusline-mode'), 'utf8')
+    .then(t => t.trim()).catch(() => '');
+
+  const gitPromise = (async () => {
+    try {
+      const stat = await fsp.stat(cacheFile).catch(() => null);
+      if (stat && Date.now() - stat.mtimeMs < CACHE_TTL) {
+        return await fsp.readFile(cacheFile, 'utf8');
+      }
+      await execP('git rev-parse --git-dir', { cwd: workDir });
+      const [branchR, stagedR, modifiedR, untrackedR, behindR] = await Promise.all([
+        execP('git branch --show-current', { cwd: workDir }),
+        execP('git diff --cached --numstat', { cwd: workDir }),
+        execP('git diff --numstat', { cwd: workDir }),
+        execP('git ls-files --others --exclude-standard', { cwd: workDir }),
+        execP('git rev-list HEAD..@{u} --count', { cwd: workDir }).catch(() => ({ stdout: '0' })),
+      ]);
+      const cacheData = [
+        branchR.stdout.trim(),
+        stagedR.stdout.trim().split('\n').filter(Boolean).length,
+        modifiedR.stdout.trim().split('\n').filter(Boolean).length,
+        untrackedR.stdout.trim().split('\n').filter(Boolean).length,
+        parseInt(behindR.stdout.trim(), 10) || 0,
+      ].join('|');
+      fsp.writeFile(cacheFile, cacheData).catch(() => {}); // fire-and-forget
+      return cacheData;
+    } catch { return ''; }
+  })();
+
+  const [widthResults, advisorModel, cavemanMode, forcedMode, gitCache] = await Promise.all([
+    Promise.all(widthProbes),
+    advisorPromise,
+    cavemanPromise,
+    forcedModePromise,
+    gitPromise,
+  ]);
 
   let cols = 0;
-  const tries = [
-    () => parseInt(execSync('tput cols </dev/tty', { encoding: 'utf8', shell: '/bin/bash', stdio: ['ignore', 'pipe', 'ignore'] }).trim(), 10),
-    () => parseInt(execSync('stty size </dev/tty', { encoding: 'utf8', shell: '/bin/bash', stdio: ['ignore', 'pipe', 'ignore'] }).split(' ')[1], 10),
-    () => { const m = execSync('mode con', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).match(/Columns:\s+(\d+)/i); return m ? parseInt(m[1], 10) : 0; },
-    () => parseInt(execSync('powershell -NoProfile -Command "$Host.UI.RawUI.WindowSize.Width"', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(), 10),
-    () => parseInt(process.env.COLUMNS, 10),
-  ];
-  for (const fn of tries) {
-    try { const v = fn(); if (v && v > 0) { cols = v; break; } } catch {}
+  for (const v of widthResults) {
+    if (v && v > 0) { cols = v; break; }
   }
   if (!cols) cols = 999;
-
-  let advisorModel = '';
-  try {
-    const settingsPath = path.join(home, '.claude', 'settings.json');
-    const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
-    if (settings.advisorModel) advisorModel = settings.advisorModel;
-  } catch {}
 
   const pct = json.context_window?.used_percentage;
   const autocompactPct = parseFloat(process.env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE) || 95;
@@ -282,30 +329,9 @@ process.stdin.on('end', () => {
   if (cw > 0) cacheParts.push(c(90, `write:${fmt(cw)}`));
   const cacheDisplay = cacheParts.join(' ');
 
-  const sessionId = json.session_id || 'default';
-  const cacheFile = path.join(os.tmpdir(), `claude-statusline-git-${sessionId}`);
-  const CACHE_TTL = 5000;
-
   let gitPart = '';
-  try {
-    let cacheData = null;
-    if (fs.existsSync(cacheFile)) {
-      const age = Date.now() - fs.statSync(cacheFile).mtimeMs;
-      if (age < CACHE_TTL) cacheData = fs.readFileSync(cacheFile, 'utf8');
-    }
-    if (!cacheData) {
-      const workDir = json.workspace?.current_dir || process.cwd();
-      execSync('git rev-parse --git-dir', { stdio: 'ignore', cwd: workDir });
-      const branch = execSync('git branch --show-current', { encoding: 'utf8', cwd: workDir }).trim();
-      const staged = execSync('git diff --cached --numstat', { encoding: 'utf8', cwd: workDir }).trim().split('\n').filter(Boolean).length;
-      const modified = execSync('git diff --numstat', { encoding: 'utf8', cwd: workDir }).trim().split('\n').filter(Boolean).length;
-      const untracked = execSync('git ls-files --others --exclude-standard', { encoding: 'utf8', cwd: workDir }).trim().split('\n').filter(Boolean).length;
-      let behind = 0;
-      try { behind = parseInt(execSync('git rev-list HEAD..@{u} --count', { encoding: 'utf8', cwd: workDir }).trim()) || 0; } catch {}
-      cacheData = `${branch}|${staged}|${modified}|${untracked}|${behind}`;
-      fs.writeFileSync(cacheFile, cacheData);
-    }
-    const [branch, staged, modified, untracked, behind] = cacheData.split('|');
+  if (gitCache) {
+    const [branch, staged, modified, untracked, behind] = gitCache.split('|');
     if (branch) {
       let status = c(36, `⎇ ${branch}`);
       if (+staged)    status += ' ' + c(32, `+${staged}`);
@@ -314,20 +340,13 @@ process.stdin.on('end', () => {
       if (+behind)    status += ' ' + c(35, `↓${behind}`);
       gitPart = status;
     }
-  } catch {}
+  }
 
   let cavemanHeads = 0;
-  try {
-    const claudeDir = process.env.CLAUDE_CONFIG_DIR || path.join(home, '.claude');
-    const mode = fs.readFileSync(path.join(claudeDir, '.caveman-active'), 'utf8').trim();
-    if (mode === 'lite' || mode === 'wenyan-lite') cavemanHeads = 1;
-    else if (mode === 'full' || mode === 'wenyan' || mode === 'wenyan-full') cavemanHeads = 2;
-    else if (mode === 'ultra' || mode === 'wenyan-ultra') cavemanHeads = 3;
-  } catch {}
+  if (cavemanMode === 'lite' || cavemanMode === 'wenyan-lite') cavemanHeads = 1;
+  else if (cavemanMode === 'full' || cavemanMode === 'wenyan' || cavemanMode === 'wenyan-full') cavemanHeads = 2;
+  else if (cavemanMode === 'ultra' || cavemanMode === 'wenyan-ultra') cavemanHeads = 3;
 
-  const claudeDirCompact = process.env.CLAUDE_CONFIG_DIR || path.join(home, '.claude');
-  let forcedMode = '';
-  try { forcedMode = fs.readFileSync(path.join(claudeDirCompact, '.statusline-mode'), 'utf8').trim(); } catch {}
   const threshRaw = process.env.COMPACT_STATUS_LINE_THRESHOLD;
   const thresh = threshRaw !== undefined ? parseInt(threshRaw, 10) : 140;
   const compact = forcedMode === 'compact' ? true
