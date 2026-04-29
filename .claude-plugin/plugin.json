@@ -1,0 +1,8 @@
+{
+  "name": "simple-claude-code-status-line",
+  "description": "Rich Claude Code status line with cache metrics, git info, cost tracking, and context window usage.",
+  "author": {
+    "name": "stanlrt",
+    "url": "https://github.com/stanlrt"
+  }
+}
