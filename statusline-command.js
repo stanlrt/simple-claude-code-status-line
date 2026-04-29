@@ -10,7 +10,7 @@ const fsp = fs.promises;
 const c = (code, s) => `\x1b[${code}m${s}\x1b[0m`;
 const sep = c(90, '|');
 
-const VERSION = '1.9.1';
+const VERSION = '1.9.2';
 const RAW_URL = 'https://raw.githubusercontent.com/stanlrt/simple-claude-code-status-line/main/statusline-command.js';
 const AUTO_UPDATE_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const HOOK_TAG = 'simple-claude-code-status-line:auto-update';
@@ -229,14 +229,39 @@ process.stdin.on('end', async () => {
   const cacheFile = path.join(os.tmpdir(), `claude-statusline-git-${sessionId}`);
   const CACHE_TTL = 5000;
 
-  // Parallel probes
+  // Width probes: race in priority order with a hard cap. powershell on Windows
+  // can take 1-3s cold; we don't wait for stragglers once a higher-priority one
+  // resolves with a valid value.
   const widthProbes = [
-    execP('tput cols </dev/tty', { shell: '/bin/bash' }).then(r => parseInt(r.stdout.trim(), 10)),
-    execP('stty size </dev/tty', { shell: '/bin/bash' }).then(r => parseInt(r.stdout.trim().split(' ')[1], 10)),
-    execP('mode con').then(r => { const m = r.stdout.match(/Columns:\s+(\d+)/i); return m ? parseInt(m[1], 10) : 0; }),
-    execP('powershell -NoProfile -Command "$Host.UI.RawUI.WindowSize.Width"').then(r => parseInt(r.stdout.trim(), 10)),
-    Promise.resolve(parseInt(process.env.COLUMNS, 10) || 0),
+    Promise.resolve(parseInt(process.env.COLUMNS, 10) || 0), // env: instant, highest priority
+    execP('tput cols </dev/tty', { shell: '/bin/bash', timeout: 200 }).then(r => parseInt(r.stdout.trim(), 10)),
+    execP('stty size </dev/tty', { shell: '/bin/bash', timeout: 200 }).then(r => parseInt(r.stdout.trim().split(' ')[1], 10)),
+    execP('mode con', { timeout: 300 }).then(r => { const m = r.stdout.match(/Columns:\s+(\d+)/i); return m ? parseInt(m[1], 10) : 0; }),
+    execP('powershell -NoProfile -Command "$Host.UI.RawUI.WindowSize.Width"', { timeout: 500 }).then(r => parseInt(r.stdout.trim(), 10)),
   ].map(p => p.catch(() => 0));
+
+  const widthPromise = new Promise(resolve => {
+    const results = new Array(widthProbes.length).fill(undefined);
+    let pending = widthProbes.length;
+    const cap = setTimeout(() => resolve(pickFirstValid(results)), 200);
+    widthProbes.forEach((p, i) => p.then(v => {
+      results[i] = (v && v > 0) ? v : 0;
+      pending--;
+      const winner = pickFirstValid(results);
+      // resolve early once we have the highest-priority result whose dependencies (earlier
+      // probes) have all reported, so we never wait on a low-priority slow probe.
+      if (winner > 0) {
+        let stable = true;
+        for (let j = 0; j < i; j++) if (results[j] === undefined) { stable = false; break; }
+        if (stable) { clearTimeout(cap); resolve(winner); return; }
+      }
+      if (pending === 0) { clearTimeout(cap); resolve(winner); }
+    }));
+  });
+  function pickFirstValid(arr) {
+    for (const v of arr) if (v && v > 0) return v;
+    return 0;
+  }
 
   const advisorPromise = fsp.readFile(path.join(home, '.claude', 'settings.json'), 'utf8')
     .then(s => { try { return JSON.parse(s).advisorModel || ''; } catch { return ''; } })
@@ -248,19 +273,20 @@ process.stdin.on('end', async () => {
   const forcedModePromise = fsp.readFile(path.join(claudeDir, '.statusline-mode'), 'utf8')
     .then(t => t.trim()).catch(() => '');
 
+  const GIT_TIMEOUT = 800;
   const gitPromise = (async () => {
     try {
       const stat = await fsp.stat(cacheFile).catch(() => null);
       if (stat && Date.now() - stat.mtimeMs < CACHE_TTL) {
         return await fsp.readFile(cacheFile, 'utf8');
       }
-      await execP('git rev-parse --git-dir', { cwd: workDir });
+      await execP('git rev-parse --git-dir', { cwd: workDir, timeout: GIT_TIMEOUT });
       const [branchR, stagedR, modifiedR, untrackedR, behindR] = await Promise.all([
-        execP('git branch --show-current', { cwd: workDir }),
-        execP('git diff --cached --numstat', { cwd: workDir }),
-        execP('git diff --numstat', { cwd: workDir }),
-        execP('git ls-files --others --exclude-standard', { cwd: workDir }),
-        execP('git rev-list HEAD..@{u} --count', { cwd: workDir }).catch(() => ({ stdout: '0' })),
+        execP('git branch --show-current', { cwd: workDir, timeout: GIT_TIMEOUT }),
+        execP('git diff --cached --numstat', { cwd: workDir, timeout: GIT_TIMEOUT }),
+        execP('git diff --numstat', { cwd: workDir, timeout: GIT_TIMEOUT }),
+        execP('git ls-files --others --exclude-standard', { cwd: workDir, timeout: GIT_TIMEOUT }),
+        execP('git rev-list HEAD..@{u} --count', { cwd: workDir, timeout: GIT_TIMEOUT }).catch(() => ({ stdout: '0' })),
       ]);
       const cacheData = [
         branchR.stdout.trim(),
@@ -274,19 +300,15 @@ process.stdin.on('end', async () => {
     } catch { return ''; }
   })();
 
-  const [widthResults, advisorModel, cavemanMode, forcedMode, gitCache] = await Promise.all([
-    Promise.all(widthProbes),
+  const [widthVal, advisorModel, cavemanMode, forcedMode, gitCache] = await Promise.all([
+    widthPromise,
     advisorPromise,
     cavemanPromise,
     forcedModePromise,
     gitPromise,
   ]);
 
-  let cols = 0;
-  for (const v of widthResults) {
-    if (v && v > 0) { cols = v; break; }
-  }
-  if (!cols) cols = 999;
+  let cols = widthVal || 999;
 
   const pct = json.context_window?.used_percentage;
   const autocompactPct = parseFloat(process.env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE) || 95;
