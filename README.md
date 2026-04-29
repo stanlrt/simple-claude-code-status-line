@@ -51,7 +51,7 @@ Then run `/statusline-setup` and Claude will handle the rest.
 | `🗿` / `🗿🗿` / `🗿🗿🗿` | Caveman mode intensity: lite / full / ultra (requires [caveman plugin](https://github.com/JuliusBrussee/caveman)) |
 | `Claude Sonnet 4.6` | Current model |
 | `▸ opus` | Advisor model (if configured via `advisorModel` in settings.json) |
-| `████████░░ 78%` | Context window usage — 10 blocks, each = 10% |
+| `████████░░ 78%` | Context window usage bar — see below |
 | `hit:87%` | Cache hit rate this turn. Green ≥50%, yellow <50%, red 0% |
 | `fresh:1.2k` | Uncached input tokens this turn — what you pay full price for |
 | `write:46.3k` | Tokens written to cache this turn (only shown when nonzero). Spikes on first turn or after a bust |
@@ -63,6 +63,37 @@ Then run `/statusline-setup` and Claude will handle the rest.
 | `↓2` | Commits behind remote (purple) |
 | `$0.0042` | Estimated cumulative session cost in USD |
 | `~/projects/myapp` | Current working directory |
+
+## Context window bar
+
+10 blocks = 0–100% of the model's context window. Color reflects usage level.
+
+**Default mode** (no `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` set, or threshold ≥ 90%):
+
+| Usage | Color | Example |
+|-------|-------|---------|
+| 0–50% | 🟢 Green | `████░░░░░░ 40%` |
+| 50–75% | 🟡 Yellow | `██████░░░░ 60%` |
+| 75%+ | 🔴 Red | `████████░░ 80%` |
+
+**Divider mode** (when `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` is set below 90%):
+
+A `|` marker splits the bar at the autocompact threshold. Blocks past it are red — compaction will fire soon.
+
+```
+████░░|░░░░  60% used, autocompact at 60% → safe
+████████|██  80% used, past autocompact at 70% → compacting soon
+```
+
+To enable divider mode, set in your `~/.claude/settings.json` env section:
+
+```json
+{
+  "env": {
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "70"
+  }
+}
+```
 
 ## Cache metrics explained
 

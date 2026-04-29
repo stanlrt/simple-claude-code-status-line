@@ -24,12 +24,31 @@ process.stdin.on('end', () => {
   } catch {}
 
   const pct = json.context_window?.used_percentage;
+  const autocompactPct = parseFloat(process.env.CLAUDE_AUTOCOMPACT_PCT_OVERRIDE) || 95;
+  const BLOCKS = 10;
   let ctx_display;
-  if (pct != null) {
-    const filled = Math.round(pct / 10);
-    ctx_display = '█'.repeat(filled) + '░'.repeat(10 - filled) + ` ${Math.round(pct)}%`;
+  if (pct == null) {
+    ctx_display = c(90, '░'.repeat(BLOCKS) + ' --%');
   } else {
-    ctx_display = '░'.repeat(10) + ' --%';
+    const filled = Math.round(pct / 10);
+    const divBlock = Math.round(autocompactPct / 10);
+    const showDiv = divBlock < 9;
+    if (showDiv) {
+      const preFilled = Math.min(filled, divBlock);
+      const postFilled = Math.max(0, filled - divBlock);
+      const preEmpty = divBlock - preFilled;
+      const postEmpty = (BLOCKS - divBlock) - postFilled;
+      ctx_display =
+        (preFilled ? c(32, '█'.repeat(preFilled)) : '') +
+        (preEmpty  ? '░'.repeat(preEmpty)          : '') +
+        c(90, '|') +
+        (postFilled ? c(31, '█'.repeat(postFilled)) : '') +
+        (postEmpty  ? '░'.repeat(postEmpty)         : '') +
+        ` ${Math.round(pct)}%`;
+    } else {
+      const color = pct < 50 ? 32 : pct < 75 ? 33 : 31;
+      ctx_display = c(color, '█'.repeat(filled) + '░'.repeat(BLOCKS - filled) + ` ${Math.round(pct)}%`);
+    }
   }
 
   let cwd = json.workspace?.current_dir || json.cwd || '?';
@@ -106,7 +125,7 @@ process.stdin.on('end', () => {
     ? c(36, model) + c(90, ` ▸ ${advisorModel}`)
     : c(36, model);
   parts.push(modelDisplay);
-  parts.push(c(33, ctx_display));
+  parts.push(ctx_display);
   parts.push(cacheDisplay);
   if (gitPart) parts.push(gitPart);
   parts.push(c(35, `$${cost.toFixed(4)}`));
