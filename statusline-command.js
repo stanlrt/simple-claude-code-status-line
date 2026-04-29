@@ -150,12 +150,10 @@ process.stdin.on('end', () => {
   let cwd = json.workspace?.current_dir || json.cwd || '?';
   if (home && cwd.startsWith(home)) cwd = '~' + cwd.slice(home.length);
 
-  const ti = json.context_window?.total_input_tokens || 0;
-  const to = json.context_window?.total_output_tokens || 0;
   const cw = json.context_window?.current_usage?.cache_creation_input_tokens || 0;
   const cr = json.context_window?.current_usage?.cache_read_input_tokens || 0;
   const fresh = json.context_window?.current_usage?.input_tokens || 0;
-  const cost = (ti * 3 + to * 15 + cw * 3.75 + cr * 0.30) / 1000000;
+  const cost = json.cost?.total_cost_usd ?? 0;
 
   const hitDenom = cr + fresh;
   const hitPct = hitDenom > 0 ? Math.round(cr / hitDenom * 100) : null;
