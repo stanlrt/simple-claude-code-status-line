@@ -7,6 +7,8 @@ const { execSync } = require('child_process');
 const c = (code, s) => `\x1b[${code}m${s}\x1b[0m`;
 const sep = c(90, '|');
 
+const VERSION = '1.6.0';
+
 const COMPACT_COMMAND_MD = `---
 description: Toggle compact mode for the status line
 allowed-tools: Bash
@@ -15,6 +17,16 @@ allowed-tools: Bash
 !\`f="$HOME/.claude/.statusline-mode"; cur=$(cat "$f" 2>/dev/null); if [ "$cur" = "compact" ]; then echo "full" > "$f"; echo "compact mode: OFF (forced full)"; else echo "compact" > "$f"; echo "compact mode: ON (forced compact)"; fi\`
 
 Report the new compact mode state to the user in one short sentence.
+`;
+
+const UPDATE_COMMAND_MD = `---
+description: Update the status line to the latest published version
+allowed-tools: Bash
+---
+
+!\`npx -y --prefer-online simple-claude-code-status-line@latest init\`
+
+Report the new installed version (look for the version line in the output) and remind the user to restart Claude Code.
 `;
 
 function runInstall() {
@@ -53,6 +65,11 @@ function runInstall() {
     if (!fs.existsSync(commandsDir)) fs.mkdirSync(commandsDir, { recursive: true });
     fs.writeFileSync(compactCmdPath, COMPACT_COMMAND_MD);
     console.log(c(32, '✓') + ` Installed /status-line-compact slash command into ${compactCmdPath}`);
+    const updateCmdPath = path.join(commandsDir, 'update-status-line.md');
+    fs.writeFileSync(updateCmdPath, UPDATE_COMMAND_MD);
+    console.log(c(32, '✓') + ` Installed /update-status-line slash command into ${updateCmdPath}`);
+
+    console.log(c(36, `  Version: ${VERSION}`));
 
     console.log(c(90, '  Restart Claude Code to see it.'));
     process.exit(0);
