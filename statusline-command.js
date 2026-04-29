@@ -7,7 +7,49 @@ const { execSync } = require('child_process');
 const c = (code, s) => `\x1b[${code}m${s}\x1b[0m`;
 const sep = c(90, '|');
 
-const VERSION = '1.6.0';
+const VERSION = '1.7.0';
+const RAW_URL = 'https://raw.githubusercontent.com/stanlrt/simple-claude-code-status-line/main/statusline-command.js';
+
+function runUpdate() {
+  const https = require('https');
+  const home = process.env.HOME || process.env.USERPROFILE || '';
+  const claudeDir = process.env.CLAUDE_CONFIG_DIR || path.join(home, '.claude');
+  const scriptDest = path.join(claudeDir, 'simple-claude-code-status-line.js');
+
+  console.log(c(90, `Fetching ${RAW_URL} ...`));
+  https.get(RAW_URL, res => {
+    if (res.statusCode !== 200) {
+      console.error(c(31, '✗') + ` HTTP ${res.statusCode} from GitHub`);
+      process.exit(1);
+    }
+    let body = '';
+    res.setEncoding('utf8');
+    res.on('data', d => body += d);
+    res.on('end', () => {
+      if (!body.includes('VERSION =')) {
+        console.error(c(31, '✗') + ` Downloaded file looks invalid (no VERSION). Aborting.`);
+        process.exit(1);
+      }
+      const m = body.match(/const VERSION = ['"]([^'"]+)['"]/);
+      const newVersion = m ? m[1] : '?';
+      try {
+        if (!fs.existsSync(claudeDir)) fs.mkdirSync(claudeDir, { recursive: true });
+        fs.writeFileSync(scriptDest, body);
+        console.log(c(32, '✓') + ` Updated ${scriptDest} (${VERSION} → ${newVersion})`);
+        console.log(c(90, '  Re-running install to refresh slash commands and settings...'));
+        const { spawnSync } = require('child_process');
+        const r = spawnSync(process.execPath, [scriptDest, 'init'], { stdio: 'inherit' });
+        process.exit(r.status || 0);
+      } catch (e) {
+        console.error(c(31, '✗') + ` Failed to write: ${e.message}`);
+        process.exit(1);
+      }
+    });
+  }).on('error', e => {
+    console.error(c(31, '✗') + ` Network error: ${e.message}`);
+    process.exit(1);
+  });
+}
 
 const COMPACT_COMMAND_MD = `---
 description: Toggle compact mode for the status line
@@ -20,13 +62,13 @@ Report the new compact mode state to the user in one short sentence.
 `;
 
 const UPDATE_COMMAND_MD = `---
-description: Update the status line to the latest published version
+description: Update the status line to the latest version from GitHub
 allowed-tools: Bash
 ---
 
-!\`npx -y --prefer-online simple-claude-code-status-line@latest init\`
+!\`node "$HOME/.claude/simple-claude-code-status-line.js" update\`
 
-Report the new installed version (look for the version line in the output) and remind the user to restart Claude Code.
+Report the new installed version (look for the "Updated ... (X → Y)" line in the output) and remind the user to restart Claude Code.
 `;
 
 function runInstall() {
@@ -80,9 +122,14 @@ function runInstall() {
 }
 
 // Explicit subcommands / flags
-if (process.argv.includes('init') || process.argv.includes('install') || process.argv.includes('--install')) {
+const isUpdate = process.argv.includes('update') || process.argv.includes('--update');
+const isInit = process.argv.includes('init') || process.argv.includes('install') || process.argv.includes('--install');
+
+if (isUpdate) {
+  runUpdate();
+} else if (isInit) {
   runInstall();
-}
+} else {
 
 // Detection: Claude Code pipes JSON within milliseconds. If no data arrives in 150ms,
 // assume direct user invocation (npx <pkg>) and run install. isTTY alone is unreliable
@@ -299,3 +346,4 @@ process.stdin.on('end', () => {
 
   process.stdout.write(parts.join(` ${sep} `) + '\n');
 });
+}
