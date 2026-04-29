@@ -1,0 +1,29 @@
+{
+  "name": "simple-claude-code-status-line",
+  "version": "1.0.0",
+  "description": "Rich status line for Claude Code with cache metrics, context window usage, git status, cost tracking, and current directory.",
+  "bin": {
+    "simple-claude-code-status-line": "statusline-command.js"
+  },
+  "files": [
+    "statusline-command.js",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "claude-code",
+    "statusline",
+    "claude",
+    "cli"
+  ],
+  "author": "stanlrt",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stanlrt/simple-claude-code-status-line.git"
+  },
+  "homepage": "https://github.com/stanlrt/simple-claude-code-status-line",
+  "engines": {
+    "node": ">=14"
+  }
+}

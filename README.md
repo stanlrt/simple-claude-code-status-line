@@ -29,7 +29,22 @@ A rich status line for [Claude Code](https://claude.ai/code) showing cache metri
 - [Claude Code](https://claude.ai/code)
 - Node.js on PATH
 
-### Option A — Claude Code plugin (recommended)
+### Option A — npm (recommended)
+
+Add to `~/.claude/settings.json`:
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "npx -y simple-claude-code-status-line"
+  }
+}
+```
+
+That's it. `npx` fetches and caches the package on first run.
+
+### Option B — Claude Code plugin
 
 ```
 /plugin marketplace add https://github.com/stanlrt/simple-claude-code-status-line.git
@@ -38,7 +53,10 @@ A rich status line for [Claude Code](https://claude.ai/code) showing cache metri
 
 Then run `/statusline-setup` and Claude will handle the rest.
 
-### Option B — Manual
+> [!NOTE]
+> Plugin install uses `git clone`. If your global git config rewrites HTTPS to SSH (`url.<x>.insteadOf` rule), the clone will fail with a host key error. Use Option A or Option C.
+
+### Option C — Manual
 
 1. Copy `statusline-command.js` to `~/.claude/statusline-command.js`
 
