@@ -1,6 +1,8 @@
 # Cache-Aware CC Status Line
 
-A rich status line for [Claude Code](https://claude.ai/code) showing the usual (Git, costs, models...) but also cache metrics and compaction+context usage. Why does it matter? Because cached tokens count 90% less towards your usage limit/API costs.
+A rich status line for [Claude Code](https://claude.ai/code) showing the usual (Git, costs, models...) but also cache metrics and compaction+context usage. 
+
+Why does it matter? Because cached tokens count 90% less towards your usage limit/API costs.
 
 ## Preview
 
