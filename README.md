@@ -33,18 +33,21 @@ Then run `/statusline-setup` and Claude will handle the rest.
 
 2. Add to `~/.claude/settings.json`:
 
-```json
-{
-  "statusLine": {
-    "type": "command",
-    "command": "node /absolute/path/to/.claude/statusline-command.js"
-  }
-}
-```
+   ```json
+   {
+     "statusLine": {
+       "type": "command",
+       "command": "node /absolute/path/to/.claude/statusline-command.js"
+     }
+   }
+   ```
 
-> **Note:** Use the absolute path. The `~` shorthand is not expanded in the command value.
+  > [!IMPORTANT]
+  >  Use the absolute path. The `~` shorthand is not expanded in the command value.
 
-## What each symbol means
+## Symbols explanation
+
+### Summary
 
 | Symbol | Meaning |
 |--------|---------|
@@ -64,28 +67,24 @@ Then run `/statusline-setup` and Claude will handle the rest.
 | `$0.0042` | Estimated cumulative session cost in USD |
 | `~/projects/myapp` | Current working directory |
 
-## Context window bar
+### Context window bar
 
-10 blocks = 0–100% of the model's context window. Color reflects usage level.
-
-**Default mode** (no `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` set, or threshold ≥ 90%):
+The entire bar represents your model's context window (100% means it is fully saturated). 
 
 | Usage | Color | Example |
 |-------|-------|---------|
-| 0–50% | 🟢 Green | `████░░░░░░ 40%` |
+| 0–50% | White | `████░░░░░░ 40%` |
 | 50–75% | 🟡 Yellow | `██████░░░░ 60%` |
 | 75%+ | 🔴 Red | `████████░░ 80%` |
 
-**Divider mode** (when `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` is set below 90%):
-
-A `|` marker splits the bar at the autocompact threshold. Blocks past it are red — compaction will fire soon.
+The `|` marker indicates your auto-compact threshold (`CLAUDE_AUTOCOMPACT_PCT_OVERRIDE`).
 
 ```
-████░░|░░░░  60% used, autocompact at 60% → safe
-████████|██  80% used, past autocompact at 70% → compacting soon
+████░░|░░░░  60% used, below autocompact threshold
+████████|██  80% used, past autocompact → will auto-compact at end of turn
 ```
 
-To enable divider mode, set in your `~/.claude/settings.json` env section:
+`CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` defaults to 95%, and can be customised in your `~/.claude/settings.json`:
 
 ```json
 {
@@ -95,7 +94,7 @@ To enable divider mode, set in your `~/.claude/settings.json` env section:
 }
 ```
 
-## Cache metrics explained
+### Cache metrics
 
 Claude Code caches your context (system prompt, conversation history) server-side. Each turn the API reports:
 
