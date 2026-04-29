@@ -4,15 +4,14 @@ A rich status line for [Claude Code](https://claude.ai/code) showing cache metri
 
 ## Preview
 
-```
-Claude Sonnet 4.6 ▸ opus | ████████░░ 78% | hit:87% fresh:1.2k | ⎇ main +2 ~1 | $0.0042 | ~/projects/myapp
-```
+- On a normal turn:
 
-On a cache miss:
+  <img width="1916" height="132" alt="image" src="https://github.com/user-attachments/assets/e784416b-d18a-43d3-815f-6fea99da507d" />
 
-```
-Claude Sonnet 4.6 | ░░░░░░░░░░ 2% | BUST hit:0% fresh:6 write:46.3k | $0.0001 | ~/projects/myapp
-```
+- On a cache miss/bust turn:
+
+  <img width="2009" height="136" alt="image" src="https://github.com/user-attachments/assets/2f0151c9-dc87-48c0-a1ed-c3aa0c8e8cfd" />
+
 
 ## What each symbol means
 
@@ -82,20 +81,7 @@ Then run `/statusline-setup` and Claude will handle the rest.
 
 - [Claude Code](https://claude.ai/code)
 - Node.js on PATH
-
-## Cost calculation
-
-Prices used (per million tokens, Sonnet rates as of 2025):
-
-| Token type | Price |
-|------------|-------|
-| Input | $3.00 |
-| Output | $15.00 |
-| Cache write | $3.75 |
-| Cache read | $0.30 |
-
-Cost shown is cumulative for the session. Prices are approximate — check [Anthropic pricing](https://www.anthropic.com/pricing) for exact rates per model.
-
+  
 ## License
 
 MIT
