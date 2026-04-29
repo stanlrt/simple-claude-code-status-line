@@ -23,10 +23,16 @@ function runInstall() {
   const settingsPath = path.join(claudeDir, 'settings.json');
   const commandsDir = path.join(claudeDir, 'commands');
   const compactCmdPath = path.join(commandsDir, 'status-line-compact.md');
-  const cmd = 'npx -y simple-claude-code-status-line';
+  const scriptDest = path.join(claudeDir, 'simple-claude-code-status-line.js');
+  const cmd = `node "${scriptDest}"`;
 
   try {
     if (!fs.existsSync(claudeDir)) fs.mkdirSync(claudeDir, { recursive: true });
+
+    // Copy this script to a stable location so the status line doesn't run npx on every render
+    fs.copyFileSync(__filename, scriptDest);
+    console.log(c(32, '✓') + ` Copied renderer to ${scriptDest}`);
+
     let settings = {};
     if (fs.existsSync(settingsPath)) {
       try { settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8')); } catch {
@@ -39,7 +45,7 @@ function runInstall() {
     const prev = settings.statusLine;
     settings.statusLine = { type: 'command', command: cmd };
     fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
-    console.log(c(32, '✓') + ` Installed status line into ${settingsPath}`);
+    console.log(c(32, '✓') + ` Set statusLine in ${settingsPath}`);
     if (prev && (prev.command !== cmd || prev.type !== 'command')) {
       console.log(c(90, `  (replaced previous: ${JSON.stringify(prev)})`));
     }
