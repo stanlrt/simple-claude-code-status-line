@@ -12,6 +12,37 @@ A rich status line for [Claude Code](https://claude.ai/code) showing cache metri
 
   <img width="2009" height="136" alt="image" src="https://github.com/user-attachments/assets/2f0151c9-dc87-48c0-a1ed-c3aa0c8e8cfd" />
 
+## Installation
+
+### Prerequs
+
+- [Claude Code](https://claude.ai/code)
+- Node.js on PATH
+
+### Option A — Claude Code plugin (recommended)
+
+```
+/install-plugin https://github.com/stanlrt/simple-claude-code-status-line
+```
+
+Then run `/statusline-setup` and Claude will handle the rest.
+
+### Option B — Manual
+
+1. Copy `statusline-command.js` to `~/.claude/statusline-command.js`
+
+2. Add to `~/.claude/settings.json`:
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "node /absolute/path/to/.claude/statusline-command.js"
+  }
+}
+```
+
+> **Note:** Use the absolute path. The `~` shorthand is not expanded in the command value.
 
 ## What each symbol means
 
@@ -49,38 +80,6 @@ Claude Code caches your context (system prompt, conversation history) server-sid
 - Starting a new session or running `/clear`
 - Context compaction (Claude Code rewrites the context prefix)
 - System prompt changes (editing `CLAUDE.md`, toggling plugins, or changing settings mid-session)
-
-## Installation
-
-### Option A — Claude Code plugin (recommended)
-
-```
-/install-plugin https://github.com/stanlrt/simple-claude-code-status-line
-```
-
-Then run `/statusline-setup` and Claude will handle the rest.
-
-### Option B — Manual
-
-1. Copy `statusline-command.js` to `~/.claude/statusline-command.js`
-
-2. Add to `~/.claude/settings.json`:
-
-```json
-{
-  "statusLine": {
-    "type": "command",
-    "command": "node /absolute/path/to/.claude/statusline-command.js"
-  }
-}
-```
-
-> **Note:** Use the absolute path. The `~` shorthand is not expanded in the command value.
-
-### Requirements
-
-- [Claude Code](https://claude.ai/code)
-- Node.js on PATH
   
 ## License
 
