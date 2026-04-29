@@ -1,0 +1,17 @@
+{
+  "name": "simple-claude-code-status-line",
+  "owner": {
+    "name": "stanlrt",
+    "url": "https://github.com/stanlrt"
+  },
+  "plugins": [
+    {
+      "name": "simple-claude-code-status-line",
+      "source": {
+        "source": "github",
+        "repo": "stanlrt/simple-claude-code-status-line"
+      },
+      "description": "Rich Claude Code status line with cache metrics, git info, cost tracking, and context window usage."
+    }
+  ]
+}

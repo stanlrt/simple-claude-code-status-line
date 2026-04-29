@@ -32,7 +32,8 @@ A rich status line for [Claude Code](https://claude.ai/code) showing cache metri
 ### Option A — Claude Code plugin (recommended)
 
 ```
-/install-plugin https://github.com/stanlrt/simple-claude-code-status-line
+/plugin marketplace add stanlrt/simple-claude-code-status-line
+/plugin install simple-claude-code-status-line@simple-claude-code-status-line
 ```
 
 Then run `/statusline-setup` and Claude will handle the rest.
