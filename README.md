@@ -1,6 +1,6 @@
-# Simple Claude Code Status Line
+# Cache-Aware CC Status Line
 
-A rich status line for [Claude Code](https://claude.ai/code) showing cache metrics, context window usage, git status, cost tracking, and current directory.
+A rich status line for [Claude Code](https://claude.ai/code) showing the usual (Git, costs, models...) but also cache metrics and compaction+context usage. Why does it matter? Because cached tokens count 90% less towards your usage limit/API costs.
 
 ## Preview
 
