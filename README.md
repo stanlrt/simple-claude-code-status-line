@@ -6,11 +6,11 @@ A rich status line for [Claude Code](https://claude.ai/code) showing cache metri
 
 - On a normal turn:
 
-  <img width="1916" height="132" alt="image" src="https://github.com/user-attachments/assets/e784416b-d18a-43d3-815f-6fea99da507d" />
+  <img width="2250" height="127" alt="image" src="https://github.com/user-attachments/assets/15b78ef6-e27c-4f80-8ff5-91da700c1ca5" />
 
 - On a cache miss/bust turn:
 
-  <img width="2009" height="136" alt="image" src="https://github.com/user-attachments/assets/2f0151c9-dc87-48c0-a1ed-c3aa0c8e8cfd" />
+  <img width="2491" height="121" alt="image" src="https://github.com/user-attachments/assets/b1e9d6b7-30eb-4fa9-b259-338df59f2e02" />
 
 ## Installation
 
