@@ -1,4 +1,4 @@
-# simple-claude-code-status-line
+# Simple Claude Code Status Line
 
 A rich status line for [Claude Code](https://claude.ai/code) showing cache metrics, context window usage, git status, cost tracking, and current directory.
 
@@ -69,37 +69,37 @@ Then run `/statusline-setup` and Claude will handle the rest.
   > [!IMPORTANT]
   >  Use the absolute path. The `~` shorthand is not expanded in the command value.
 
-## Symbols explanation
+## Normal mode
 
-### Summary
+### Symbols
 
-| Symbol | Meaning |
-|--------|---------|
-| `🗿` / `🗿🗿` / `🗿🗿🗿` | Caveman mode intensity: lite / full / ultra (requires [caveman plugin](https://github.com/JuliusBrussee/caveman)) |
-| `Claude Sonnet 4.6` | Current model |
-| `▸ opus` | Advisor model (if configured via `advisorModel` in settings.json) |
-| `████████░░ 78%` | Context window usage bar — see below |
-| `hit:87%` | Cache hit rate this turn. Green ≥50%, yellow <50%, red 0% |
-| `fresh:1.2k` | Uncached input tokens this turn — what you pay full price for |
-| `write:46.3k` | Tokens written to cache this turn (only shown when nonzero). Spikes on first turn or after a bust |
-| `BUST` | Cache miss detected (red). Appears when `hit:0%` and input is substantial |
-| `⎇ main` | Current git branch |
-| `+2` | Staged files (green) |
-| `~1` | Modified files (yellow) |
-| `?3` | Untracked files (gray) |
-| `↓2` | Commits behind remote (purple) |
-| `$0.0042` | Estimated cumulative session cost in USD |
-| `~/projects/myapp` | Current working directory |
+| Symbol              | Meaning                                                                                                           |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `🗿` / `🗿🗿` / `🗿🗿🗿`  | Caveman mode intensity: lite / full / ultra (requires [caveman plugin](https://github.com/JuliusBrussee/caveman)) |
+| `Claude Sonnet 4.6` | Current model                                                                                                     |
+| `▸ opus`            | Advisor model (if configured via `advisorModel` in settings.json)                                                 |
+| `████████░░ 78%`    | Context window usage bar — see below                                                                              |
+| `hit:87%`           | Cache hit rate this turn. Green ≥50%, yellow <50%, red 0%                                                         |
+| `fresh:1.2k`        | Uncached input tokens this turn — what you pay full price for                                                     |
+| `write:46.3k`       | Tokens written to cache this turn (only shown when nonzero). Spikes on first turn or after a bust                 |
+| `BUST`              | Cache miss detected (red). Appears when `hit:0%` and input is substantial                                         |
+| `⎇ main`            | Current git branch                                                                                                |
+| `+2`                | Staged files (green)                                                                                              |
+| `~1`                | Modified files (yellow)                                                                                           |
+| `?3`                | Untracked files (gray)                                                                                            |
+| `↓2`                | Commits behind remote (purple)                                                                                    |
+| `$0.0042`           | Estimated cumulative session cost in USD                                                                          |
+| `~/projects/myapp`  | Current working directory                                                                                         |
 
 ### Context window bar
 
 The entire bar represents your model's context window (100% means it is fully saturated). 
 
-| Usage | Color | Example |
-|-------|-------|---------|
-| 0–50% | White | `████░░░░░░ 40%` |
+| Usage  | Color    | Example          |
+| ------ | -------- | ---------------- |
+| 0–50%  | White    | `████░░░░░░ 40%` |
 | 50–75% | 🟡 Yellow | `██████░░░░ 60%` |
-| 75%+ | 🔴 Red | `████████░░ 80%` |
+| 75%+   | 🔴 Red    | `████████░░ 80%` |
 
 The `|` marker indicates your auto-compact threshold (`CLAUDE_AUTOCOMPACT_PCT_OVERRIDE`).
 
@@ -118,45 +118,46 @@ The `|` marker indicates your auto-compact threshold (`CLAUDE_AUTOCOMPACT_PCT_OV
 }
 ```
 
-### Compact mode
+## Compact mode
 
-For narrow windows the status line auto-switches to a compact layout:
+### How to enable
 
-```
-🗿🗿 | O4.7+ ▸ o | 12% (80) | h100% | ⎇ main | $0.3 | ~\path\to\dir
-```
+In native terminals (Mac/Linux CLI), the status line auto-switches to a compact layout. You can also toggle it manually:
 
-- Model: first letter (`O`/`S`/`H`) + version, `+` for 1M context
-- Advisor: first letter, lowercase
-- Context: `pct%` and `(threshold)` only when `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` is set
-- Cache: `h100%` or `BUST`, no fresh/write
-- Git: branch only, no file counts
-- Cost: 1 decimal
+- Set `COMPACT_STATUS_LINE_THRESHOLD` env var to `0` in your `~/.claude/settings.json` (default `140`).
+- Run `/status-line-compact` to switch compact mode on/off.
+- Set `.statusline-mode` file to `compact` or `full` in your `~/.claude` directory.
 
-Switch threshold via `COMPACT_STATUS_LINE_THRESHOLD` env var (default `140`). Set to `0` to force compact mode always.
+### Symbols
 
-> Detection of terminal width works on real TTYs (Mac/Linux CLI). The Claude Code desktop app on any OS does not expose its rendered window width — use the `/status-line-compact` slash command (or set `COMPACT_STATUS_LINE_THRESHOLD=0`) to force compact mode there.
+<img width="1536" height="131" alt="image" src="https://github.com/user-attachments/assets/0f66503e-3301-4d34-bd54-88874bad5ac3" />
 
-**Toggle on the fly:** run `/status-line-compact` to switch compact mode on/off. Creates a flag file at `~/.claude/.statusline-compact-forced` that overrides the threshold.
+| Symbol                              | Meaning                                                                                           |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `O`/`S`/`H` + version, optional `+` | Current model (**O**pus/**S**onnet/**H**aiku) + version; `+` suffix for 1M context                |
+| lowercase letter                    | Advisor model                                                                                     |
+| `78%`, `(95)` when shown            | Context window usage; threshold in parentheses only when `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` is set |
+| `h87%`, `BUST`                      | Cache hit rate during last turn, or cache bust                                                    |
+| `⎇ main`                            | Current git branch — no staged / modified / untracked counts                                      |
+| `$0.0`                              | Estimated cumulative session cost in USD                                                          |
 
-### Cache metrics
+## Understanding cache
+
+### What are the metrics?
 
 Claude Code caches your context (system prompt, conversation history) server-side. Each turn the API reports:
 
-- **`cache_read_input_tokens`** — tokens served from cache (~90% cheaper)
-- **`cache_creation_input_tokens`** — tokens written to cache (charged at 125% of normal)
-- **`input_tokens`** — uncached tokens processed at full price
+- **`cache_read_input_tokens`** — tokens served from cache, not inferred again **(-90% cheaper)**
+- **`cache_creation_input_tokens`** — tokens written to cache **(125% more expensive)**
+- **`input_tokens`** — uncached tokens processed **(100%, normal price)**
 
 **hit%** = `cache_read / (cache_read + input_tokens)` — higher is better.
 
 ### What causes a cache BUST?
 
-- Switching models (each model has its own cache namespace)
+- Switching models (each model has its own KV cache namespace)
 - Cache TTL expiry (5 min default, up to 1 hr with extended cache)
-- Starting a new session or running `/clear`
+- Starting a new session
+- Running `/clear`
 - Context compaction (Claude Code rewrites the context prefix)
 - System prompt changes (editing `CLAUDE.md`, toggling plugins, or changing settings mid-session)
-  
-## License
-
-MIT
