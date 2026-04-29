@@ -7,8 +7,37 @@ const { execSync } = require('child_process');
 const c = (code, s) => `\x1b[${code}m${s}\x1b[0m`;
 const sep = c(90, '|');
 
-const VERSION = '1.7.0';
+const VERSION = '1.8.0';
 const RAW_URL = 'https://raw.githubusercontent.com/stanlrt/simple-claude-code-status-line/main/statusline-command.js';
+const AUTO_UPDATE_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const HOOK_TAG = 'simple-claude-code-status-line:auto-update';
+
+function runAutoUpdate() {
+  // Detach into a background process so SessionStart hook returns instantly
+  if (!process.env.SIMPLE_STATUSLINE_DETACHED) {
+    const { spawn } = require('child_process');
+    const child = spawn(process.execPath, [__filename, 'auto-update'], {
+      detached: true,
+      stdio: 'ignore',
+      env: { ...process.env, SIMPLE_STATUSLINE_DETACHED: '1' },
+    });
+    child.unref();
+    process.exit(0);
+  }
+
+  // Detached child: throttle, then run update
+  try {
+    const home = process.env.HOME || process.env.USERPROFILE || '';
+    const claudeDir = process.env.CLAUDE_CONFIG_DIR || path.join(home, '.claude');
+    const stamp = path.join(claudeDir, '.statusline-last-update-check');
+    if (fs.existsSync(stamp)) {
+      const age = Date.now() - fs.statSync(stamp).mtimeMs;
+      if (age < AUTO_UPDATE_INTERVAL_MS) process.exit(0);
+    }
+    fs.writeFileSync(stamp, String(Date.now()));
+  } catch {}
+  runUpdate();
+}
 
 function runUpdate() {
   const https = require('https');
@@ -98,11 +127,27 @@ function runInstall() {
     }
     const prev = settings.statusLine;
     settings.statusLine = { type: 'command', command: cmd };
+
+    // SessionStart hook: detached background auto-update, throttled to once per 7 days
+    const hookCmd = `node "${scriptDest}" auto-update`;
+    settings.hooks = settings.hooks || {};
+    const sessionHooks = Array.isArray(settings.hooks.SessionStart) ? settings.hooks.SessionStart : [];
+    // Remove any prior copies of our hook (match by command substring)
+    const filtered = sessionHooks
+      .map(group => {
+        if (!group || !Array.isArray(group.hooks)) return group;
+        return { ...group, hooks: group.hooks.filter(h => !(h && typeof h.command === 'string' && h.command.includes('simple-claude-code-status-line') && h.command.includes('auto-update'))) };
+      })
+      .filter(group => group && Array.isArray(group.hooks) && group.hooks.length > 0);
+    filtered.push({ hooks: [{ type: 'command', command: hookCmd }] });
+    settings.hooks.SessionStart = filtered;
+
     fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
     console.log(c(32, '✓') + ` Set statusLine in ${settingsPath}`);
     if (prev && (prev.command !== cmd || prev.type !== 'command')) {
       console.log(c(90, `  (replaced previous: ${JSON.stringify(prev)})`));
     }
+    console.log(c(32, '✓') + ` Wired SessionStart hook for weekly auto-update`);
 
     if (!fs.existsSync(commandsDir)) fs.mkdirSync(commandsDir, { recursive: true });
     fs.writeFileSync(compactCmdPath, COMPACT_COMMAND_MD);
@@ -123,9 +168,12 @@ function runInstall() {
 
 // Explicit subcommands / flags
 const isUpdate = process.argv.includes('update') || process.argv.includes('--update');
+const isAutoUpdate = process.argv.includes('auto-update');
 const isInit = process.argv.includes('init') || process.argv.includes('install') || process.argv.includes('--install');
 
-if (isUpdate) {
+if (isAutoUpdate) {
+  runAutoUpdate();
+} else if (isUpdate) {
   runUpdate();
 } else if (isInit) {
   runInstall();
