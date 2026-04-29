@@ -133,10 +133,14 @@ process.stdin.on('end', () => {
   } catch {}
 
   const claudeDirCompact = process.env.CLAUDE_CONFIG_DIR || path.join(home, '.claude');
-  const forcedCompact = fs.existsSync(path.join(claudeDirCompact, '.statusline-compact-forced'));
+  let forcedMode = '';
+  try { forcedMode = fs.readFileSync(path.join(claudeDirCompact, '.statusline-mode'), 'utf8').trim(); } catch {}
   const threshRaw = process.env.COMPACT_STATUS_LINE_THRESHOLD;
   const thresh = threshRaw !== undefined ? parseInt(threshRaw, 10) : 140;
-  const compact = forcedCompact || thresh === 0 ? true : cols < thresh;
+  const compact = forcedMode === 'compact' ? true
+                : forcedMode === 'full' ? false
+                : thresh === 0 ? true
+                : cols < thresh;
 
   const parts = [];
   if (cavemanHeads > 0) parts.push('🗿'.repeat(cavemanHeads));
