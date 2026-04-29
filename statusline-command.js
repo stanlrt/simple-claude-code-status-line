@@ -91,10 +91,17 @@ process.stdin.on('end', () => {
     }
   } catch {}
 
-  const caveman = home ? fs.existsSync(path.join(home, '.caveman-flag')) : false;
+  let cavemanHeads = 0;
+  try {
+    const claudeDir = process.env.CLAUDE_CONFIG_DIR || path.join(home, '.claude');
+    const mode = fs.readFileSync(path.join(claudeDir, '.caveman-active'), 'utf8').trim();
+    if (mode === 'lite' || mode === 'wenyan-lite') cavemanHeads = 1;
+    else if (mode === 'full' || mode === 'wenyan' || mode === 'wenyan-full') cavemanHeads = 2;
+    else if (mode === 'ultra' || mode === 'wenyan-ultra') cavemanHeads = 3;
+  } catch {}
 
   const parts = [];
-  if (caveman) parts.push('🗿');
+  if (cavemanHeads > 0) parts.push('🗿'.repeat(cavemanHeads));
   const modelDisplay = advisorModel
     ? c(36, model) + c(90, ` ▸ ${advisorModel}`)
     : c(36, model);
