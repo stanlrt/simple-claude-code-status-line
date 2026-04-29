@@ -111,7 +111,9 @@ For narrow windows the status line auto-switches to a compact layout:
 
 Switch threshold via `COMPACT_STATUS_LINE_THRESHOLD` env var (default `140`). Set to `0` to force compact mode always.
 
-> Detection of terminal width works on real TTYs (Mac/Linux CLI). The Claude Code desktop app on any OS does not expose its rendered window width — set `COMPACT_STATUS_LINE_THRESHOLD=0` if you want compact mode there.
+> Detection of terminal width works on real TTYs (Mac/Linux CLI). The Claude Code desktop app on any OS does not expose its rendered window width — use the `/status-line-compact` slash command (or set `COMPACT_STATUS_LINE_THRESHOLD=0`) to force compact mode there.
+
+**Toggle on the fly:** run `/status-line-compact` to switch compact mode on/off. Creates a flag file at `~/.claude/.statusline-compact-forced` that overrides the threshold.
 
 ### Cache metrics
 

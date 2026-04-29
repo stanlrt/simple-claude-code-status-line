@@ -132,9 +132,11 @@ process.stdin.on('end', () => {
     else if (mode === 'ultra' || mode === 'wenyan-ultra') cavemanHeads = 3;
   } catch {}
 
+  const claudeDirCompact = process.env.CLAUDE_CONFIG_DIR || path.join(home, '.claude');
+  const forcedCompact = fs.existsSync(path.join(claudeDirCompact, '.statusline-compact-forced'));
   const threshRaw = process.env.COMPACT_STATUS_LINE_THRESHOLD;
   const thresh = threshRaw !== undefined ? parseInt(threshRaw, 10) : 140;
-  const compact = thresh === 0 ? true : cols < thresh;
+  const compact = forcedCompact || thresh === 0 ? true : cols < thresh;
 
   const parts = [];
   if (cavemanHeads > 0) parts.push('🗿'.repeat(cavemanHeads));
