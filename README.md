@@ -86,18 +86,18 @@ Then run `/statusline-setup` and Claude will handle the rest.
 | ------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | `🗿` / `🗿🗿` / `🗿🗿🗿`  | Caveman mode intensity: lite / full / ultra (requires [caveman plugin](https://github.com/JuliusBrussee/caveman), optional but recommended) |
 | `Claude Sonnet 4.6` | Current model                                                                                                     |
-| `▸ opus`            | Advisor model (if configured via `advisorModel` in settings.json)                                                 |
-| `████████░░ 78%`    | Context window usage bar — see below                                                                              |
-| `hit:87%`           | Cache hit rate this turn. Green ≥50%, yellow <50%, red 0%                                                         |
-| `fresh:1.2k`        | Uncached input tokens this turn — what you pay full price for                                                     |
+| `▸ opus`            | Advisor model (if configured via `/advisor`)                                                 |
+| `████████░░ 78%`    | Context window usage bar, see below                                                                              |
+| `hit:87%`           | Cache hit rate this turn                                                     |
+| `fresh:1.2k`        | Uncached input tokens this turn; what you pay full price for                                                     |
 | `write:46.3k`       | Tokens written to cache this turn (only shown when nonzero). Spikes on first turn or after a bust                 |
-| `BUST`              | Cache miss detected (red). Appears when `hit:0%` and input is substantial                                         |
+| `BUST`              | Cache miss detected. Appears when `hit:0%` and input is substantial                                         |
 | `⎇ main`            | Current git branch                                                                                                |
-| `+2`                | Staged files (green)                                                                                              |
+| `+2`                | Staged files (green)                                                                                             |
 | `~1`                | Modified files (yellow)                                                                                           |
 | `?3`                | Untracked files (gray)                                                                                            |
 | `↓2`                | Commits behind remote (purple)                                                                                    |
-| `$0.0042`           | Estimated cumulative session cost in USD                                                                          |
+| `$0.0042`           | Estimated cumulative session cost                                                                          |
 | `~/projects/myapp`  | Current working directory                                                                                         |
 
 ### Context window bar
