@@ -43,6 +43,10 @@ That's it. The command writes the `statusLine` entry into `~/.claude/settings.js
 >
 > If detection fails on your shell, force install mode explicitly: `npx -y simple-claude-code-status-line init`
 
+<details>
+
+<summary>Other options</summary>
+
 ### Option B — Claude Code plugin
 
 ```
@@ -72,6 +76,7 @@ Then run `/statusline-setup` and Claude will handle the rest.
 
   > [!IMPORTANT]
   >  Use the absolute path. The `~` shorthand is not expanded in the command value.
+</details>
 
 ## Normal mode
 
