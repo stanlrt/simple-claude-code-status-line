@@ -84,7 +84,7 @@ Then run `/statusline-setup` and Claude will handle the rest.
 
 | Symbol              | Meaning                                                                                                           |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `🗿` / `🗿🗿` / `🗿🗿🗿`  | Caveman mode intensity: lite / full / ultra (requires [caveman plugin](https://github.com/JuliusBrussee/caveman)) |
+| `🗿` / `🗿🗿` / `🗿🗿🗿`  | Caveman mode intensity: lite / full / ultra (requires [caveman plugin](https://github.com/JuliusBrussee/caveman), optional but recommended) |
 | `Claude Sonnet 4.6` | Current model                                                                                                     |
 | `▸ opus`            | Advisor model (if configured via `advisorModel` in settings.json)                                                 |
 | `████████░░ 78%`    | Context window usage bar — see below                                                                              |
