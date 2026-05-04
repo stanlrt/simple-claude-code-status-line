@@ -98,6 +98,7 @@ Then run `/statusline-setup` and Claude will handle the rest.
 | `?3`                | Untracked files (gray)                                                                                            |
 | `↓2`                | Commits behind remote (purple)                                                                                    |
 | `$0.0042`           | Estimated cumulative session cost                                                                          |
+| `5h:67%`            | Tokens used in current 5-hour billing block vs your historical max (via [ccusage](https://ccusage.com)). Green <50%, yellow <75%, red ≥75%. Hidden if no data. |
 | `~/projects/myapp`  | Current working directory                                                                                         |
 
 ### Context window bar
@@ -149,6 +150,7 @@ In native terminals (Mac/Linux CLI), the status line auto-switches to a compact 
 | `h87%`, `BUST`                      | Cache hit rate during last turn, or cache bust                                                    |
 | `⎇ main`                            | Current git branch — no staged / modified / untracked counts                                      |
 | `$0.0`                              | Estimated cumulative session cost in USD                                                          |
+| `67%` (after `$cost`)               | 5-hour block usage % (no `5h:` prefix in compact). Hidden if no data.                             |
 
 ## Understanding cache
 
@@ -166,6 +168,15 @@ Claude Code caches your context (system prompt, conversation history) server-sid
 
 - Switching models (each model has its own KV cache namespace)
 - Cache TTL expiry (5 min default, up to 1 hr with extended cache)
+
+## 5-hour block usage
+
+Shows `5h:NN%` next to the cost (just `NN%` in compact). Computed from your active 5-hour billing block tokens vs the highest block ever seen (via `ccusage blocks --token-limit max`).
+
+- Cached at `~/.claude/.statusline-5h-cache.json`, refreshed in a detached background process every 60s
+- Render never blocks on it — first render after install is empty until the background refresh writes the cache (~5–15s npx cold start)
+- Requires Node + npx on PATH (no install needed; `npx -y ccusage` fetches on demand)
+- Hidden entirely when no data is available
 - Starting a new session
 - Running `/clear`
 - Context compaction (Claude Code rewrites the context prefix)

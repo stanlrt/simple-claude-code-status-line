@@ -10,7 +10,8 @@ const fsp = fs.promises;
 const c = (code, s) => `\x1b[${code}m${s}\x1b[0m`;
 const sep = c(90, '|');
 
-const VERSION = '1.9.2';
+const VERSION = '1.10.0';
+const FIVEH_CACHE_TTL_MS = 60 * 1000;
 const RAW_URL = 'https://raw.githubusercontent.com/stanlrt/simple-claude-code-status-line/main/statusline-command.js';
 const AUTO_UPDATE_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const HOOK_TAG = 'simple-claude-code-status-line:auto-update';
@@ -179,12 +180,69 @@ function runInstall() {
   }
 }
 
+function fivehCachePath() {
+  const home = process.env.HOME || process.env.USERPROFILE || '';
+  const claudeDir = process.env.CLAUDE_CONFIG_DIR || path.join(home, '.claude');
+  return path.join(claudeDir, '.statusline-5h-cache.json');
+}
+
+function runRefresh5h() {
+  // Detached background: shell out to ccusage, parse JSON, write cache. Never blocks render.
+  const { spawn } = require('child_process');
+  const child = spawn('npx', ['-y', 'ccusage@latest', 'blocks', '--active', '-j', '--token-limit', 'max'], {
+    stdio: ['ignore', 'pipe', 'ignore'],
+    windowsHide: true,
+    shell: true,
+  });
+  let out = '';
+  child.stdout.setEncoding('utf8');
+  child.stdout.on('data', d => out += d);
+  child.on('error', () => process.exit(0));
+  child.on('close', () => {
+    try {
+      const parsed = JSON.parse(out);
+      const blocks = parsed.blocks || [];
+      const active = blocks.find(b => b.isActive) || blocks[blocks.length - 1];
+      if (!active) { process.exit(0); }
+      const tokens = active.totalTokens || (active.tokenCounts && (active.tokenCounts.inputTokens + active.tokenCounts.outputTokens + (active.tokenCounts.cacheCreationInputTokens || 0) + (active.tokenCounts.cacheReadInputTokens || 0))) || 0;
+      const limit = active.tokenLimitStatus?.limit || parsed.tokenLimit || 0;
+      const cost = active.costUSD || 0;
+      const remainingMin = active.projection?.remainingMinutes ?? null;
+      const pct = limit > 0 ? Math.round(tokens / limit * 100) : null;
+      const data = { updatedAt: Date.now(), pct, tokens, limit, cost, remainingMin };
+      fs.writeFileSync(fivehCachePath(), JSON.stringify(data));
+    } catch {}
+    process.exit(0);
+  });
+}
+
+function maybeSpawn5hRefresh(cacheAge) {
+  if (cacheAge !== null && cacheAge < FIVEH_CACHE_TTL_MS) return;
+  // Lock so concurrent renders don't all spawn npx
+  const lock = fivehCachePath() + '.lock';
+  try {
+    const st = fs.statSync(lock);
+    if (Date.now() - st.mtimeMs < 30000) return; // refresh in flight
+  } catch {}
+  try { fs.writeFileSync(lock, String(Date.now())); } catch {}
+  const { spawn } = require('child_process');
+  const child = spawn(process.execPath, [__filename, 'refresh-5h'], {
+    detached: true,
+    stdio: 'ignore',
+    windowsHide: true,
+  });
+  child.unref();
+}
+
 // Explicit subcommands / flags
 const isUpdate = process.argv.includes('update') || process.argv.includes('--update');
 const isAutoUpdate = process.argv.includes('auto-update');
 const isInit = process.argv.includes('init') || process.argv.includes('install') || process.argv.includes('--install');
+const isRefresh5h = process.argv.includes('refresh-5h');
 
-if (isAutoUpdate) {
+if (isRefresh5h) {
+  runRefresh5h();
+} else if (isAutoUpdate) {
   runAutoUpdate();
 } else if (isUpdate) {
   runUpdate();
@@ -273,6 +331,19 @@ process.stdin.on('end', async () => {
   const forcedModePromise = fsp.readFile(path.join(claudeDir, '.statusline-mode'), 'utf8')
     .then(t => t.trim()).catch(() => '');
 
+  const fivehPromise = (async () => {
+    const cachePath = fivehCachePath();
+    let data = null;
+    let age = null;
+    try {
+      const raw = await fsp.readFile(cachePath, 'utf8');
+      data = JSON.parse(raw);
+      age = Date.now() - (data.updatedAt || 0);
+    } catch {}
+    maybeSpawn5hRefresh(age);
+    return data;
+  })();
+
   const GIT_TIMEOUT = 800;
   const gitPromise = (async () => {
     try {
@@ -300,13 +371,23 @@ process.stdin.on('end', async () => {
     } catch { return ''; }
   })();
 
-  const [widthVal, advisorModel, cavemanMode, forcedMode, gitCache] = await Promise.all([
+  const [widthVal, advisorModel, cavemanMode, forcedMode, gitCache, fivehData] = await Promise.all([
     widthPromise,
     advisorPromise,
     cavemanPromise,
     forcedModePromise,
     gitPromise,
+    fivehPromise,
   ]);
+
+  let fivehFull = '';
+  let fivehCompact = '';
+  if (fivehData && fivehData.pct != null) {
+    const p = fivehData.pct;
+    const color = p < 50 ? 32 : p < 75 ? 33 : 31;
+    fivehFull = c(color, ` 5h:${p}%`);
+    fivehCompact = c(color, ` ${p}%`);
+  }
 
   let cols = widthVal || 999;
 
@@ -429,7 +510,7 @@ process.stdin.on('end', async () => {
       const branchOnly = gitPart.split(' ').slice(0, 2).join(' ');
       parts.push(branchOnly);
     }
-    parts.push(c(35, `$${cost.toFixed(1)}`));
+    parts.push(c(35, `$${cost.toFixed(1)}`) + fivehCompact);
     parts.push(c(32, cwd));
   } else {
     const modelDisplay = advisorModel
@@ -439,7 +520,7 @@ process.stdin.on('end', async () => {
     parts.push(ctx_display);
     parts.push(cacheDisplay);
     if (gitPart) parts.push(gitPart);
-    parts.push(c(35, `$${cost.toFixed(4)}`));
+    parts.push(c(35, `$${cost.toFixed(4)}`) + fivehFull);
     parts.push(c(32, cwd));
   }
 

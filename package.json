@@ -1,6 +1,6 @@
 {
   "name": "simple-claude-code-status-line",
-  "version": "1.9.2",
+  "version": "1.10.0",
   "description": "Rich status line for Claude Code with cache metrics, context window usage, git status, cost tracking, and current directory.",
   "bin": {
     "simple-claude-code-status-line": "statusline-command.js"
