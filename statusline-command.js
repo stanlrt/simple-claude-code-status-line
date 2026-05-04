@@ -10,7 +10,7 @@ const fsp = fs.promises;
 const c = (code, s) => `\x1b[${code}m${s}\x1b[0m`;
 const sep = c(90, '|');
 
-const VERSION = '1.10.0';
+const VERSION = '1.10.1';
 const FIVEH_CACHE_TTL_MS = 60 * 1000;
 const RAW_URL = 'https://raw.githubusercontent.com/stanlrt/simple-claude-code-status-line/main/statusline-command.js';
 const AUTO_UPDATE_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -208,10 +208,18 @@ function runRefresh5h() {
       const limit = active.tokenLimitStatus?.limit || parsed.tokenLimit || 0;
       const cost = active.costUSD || 0;
       const remainingMin = active.projection?.remainingMinutes ?? null;
-      const pct = limit > 0 ? Math.round(tokens / limit * 100) : null;
+      if (limit <= 0) {
+        // ccusage hasn't resolved a token limit yet (early in 5h block).
+        // Don't cache the null — clear the lock so the next render retries instead of waiting out the TTL.
+        try { fs.unlinkSync(fivehCachePath() + '.lock'); } catch {}
+        process.exit(0);
+      }
+      const pct = Math.round(tokens / limit * 100);
       const data = { updatedAt: Date.now(), pct, tokens, limit, cost, remainingMin };
       fs.writeFileSync(fivehCachePath(), JSON.stringify(data));
-    } catch {}
+    } catch {
+      try { fs.unlinkSync(fivehCachePath() + '.lock'); } catch {}
+    }
     process.exit(0);
   });
 }
