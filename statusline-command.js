@@ -10,7 +10,7 @@ const fsp = fs.promises;
 const c = (code, s) => `\x1b[${code}m${s}\x1b[0m`;
 const sep = c(90, '|');
 
-const VERSION = '1.10.1';
+const VERSION = '1.10.2';
 const FIVEH_CACHE_TTL_MS = 60 * 1000;
 const RAW_URL = 'https://raw.githubusercontent.com/stanlrt/simple-claude-code-status-line/main/statusline-command.js';
 const AUTO_UPDATE_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -454,7 +454,9 @@ process.stdin.on('end', async () => {
   if (gitCache) {
     const [branch, staged, modified, untracked, behind] = gitCache.split('|');
     if (branch) {
-      let status = c(36, `⎇ ${branch}`);
+      const BRANCH_MAX = 30;
+      const branchShort = branch.length > BRANCH_MAX ? branch.slice(0, BRANCH_MAX) + '…' : branch;
+      let status = c(36, `⎇ ${branchShort}`);
       if (+staged)    status += ' ' + c(32, `+${staged}`);
       if (+modified)  status += ' ' + c(33, `~${modified}`);
       if (+untracked) status += ' ' + c(90, `?${untracked}`);
@@ -527,8 +529,8 @@ process.stdin.on('end', async () => {
     parts.push(modelDisplay);
     parts.push(ctx_display);
     parts.push(cacheDisplay);
-    if (gitPart) parts.push(gitPart);
     parts.push(c(35, `$${cost.toFixed(4)}`) + fivehFull);
+    if (gitPart) parts.push(gitPart);
     parts.push(c(32, cwd));
   }
 
